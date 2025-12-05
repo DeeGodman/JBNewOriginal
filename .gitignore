@@ -57,7 +57,7 @@ typings/
 # dotenv environment variables file
 .env
 .env.*.local
-
+DB_Seed.js
 
 # next.js build output
 .next
