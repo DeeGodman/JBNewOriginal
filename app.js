@@ -10,16 +10,21 @@ import orderRouter from "./routes/order.route.js";
 
 import connectToDatabase from "./database/mongodb.js";
 import errorMiddleware from "./middlewares/error.middleware.js";
-//import arcjetMiddleware from "./middlewares/arcjet.middleware.js";
+// import arcjetMiddleware from './middlewares/arcjet.middleware.js';
 
 const app = express();
 
-// CORS configuration - MUST be before other middlewares
+// ==========================================
+// CORS CONFIGURATION
+// ==========================================
 const allowedOrigins = [
-  "https://0a0c250b8682.ngrok-free.app",
-  "https://f75f502c0403.ngrok-free.app",
   "http://localhost:3000",
   "http://localhost:5000",
+  "http://localhost:5500", // Just in case you switch ports locally
+  "https://joy-bundle.vercel.app", // Main production domain
+  "https://joy-bundle-frontend.vercel.app", // Project domain
+  "https://joy-bundle-frontend-git-main-deegodman.vercel.app", // (Optional) Git branch preview URL
+  // Add any ngrok URLs here if testing with them
 ];
 
 app.use(
@@ -29,14 +34,14 @@ app.use(
       if (!origin) return callback(null, true);
 
       if (allowedOrigins.includes(origin)) {
-        callback(null, true); // Pass true, not the origin
+        callback(null, true);
       } else {
-        console.log("CORS blocked origin:", origin);
+        console.log("❌ CORS Blocked Origin:", origin);
         callback(new Error(`Origin ${origin} not allowed by CORS`));
       }
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: [
       "Content-Type",
       "Authorization",
@@ -45,71 +50,47 @@ app.use(
       "Origin",
     ],
     exposedHeaders: ["Set-Cookie"],
-    optionsSuccessStatus: 200, // Some legacy browsers choke on 204
+    optionsSuccessStatus: 200,
   }),
 );
 
-// const allowedOrigins = [
-//   "http://localhost:3000",
-//   "http://localhost:5000",
-//   "https://b942cc9a52e4.ngrok-free.app",
-// "https://c53d2e6cbcf9.ngrok-free.app"
-
-// ];
-
-// app.use(cors({
-//   origin: function (origin, callback) {
-//     // Allow requests with no origin (like Postman, mobile apps, etc.)
-//     if (!origin) return callback(null, true);
-
-//     // Allow localhost + any ngrok subdomain
-//     if (allowedOrigins.includes(origin) || /https:\/\/[a-z0-9-]+\.ngrok-free\.app$/.test(origin)) {
-//       callback(null, true);
-//     } else {
-//       console.log("CORS blocked origin:", origin);
-//       callback(new Error(`Origin ${origin} not allowed by CORS`));
-//     }
-//   },
-//   credentials: true,
-//   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-//   allowedHeaders: [
-//     "Content-Type",
-//     "Authorization",
-//     "X-Requested-With",
-//     "Accept",
-//     "Origin"
-//   ],
-//   exposedHeaders: ["Set-Cookie"],
-//   optionsSuccessStatus: 200
-// }));
-
-// Other middlewares AFTER CORS
+// ==========================================
+// MIDDLEWARE
+// ==========================================
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-//app.use(arcjetMiddleware);
+// app.use(arcjetMiddleware);
 
-// Routes
-app.use("/api/v1/auth", authRouter);
-app.use("/api/v1/users", userRouter);
-app.use("/api/v1/payments", paymentRouter);
-app.use("/api/v1/orders", orderRouter);
-app.use("/api/v1/bundles", bundleRouter);
+// ==========================================
+// ROUTES
+// ==========================================
+const apiPrefix = "/api/v1";
 
-// Error middleware should be last
+app.use(`${apiPrefix}/auth`, authRouter);
+app.use(`${apiPrefix}/users`, userRouter);
+app.use(`${apiPrefix}/payments`, paymentRouter);
+app.use(`${apiPrefix}/orders`, orderRouter);
+app.use(`${apiPrefix}/bundles`, bundleRouter);
+
+// Base Routes
+app.get("/", (req, res) => {
+  res.send("Welcome to the JoyBundle API!");
+});
+
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "OK", message: "Server is healthy" });
+});
+
+// ==========================================
+// ERROR HANDLING
+// ==========================================
 app.use(errorMiddleware);
 
-app.get("/", (req, res) => {
-  res.send("Welcome to the dataBundle App Backend!");
-});
-
-app.get("/api", (req, res) => {
-  res.json({ message: "API is working!" });
-});
-
-console.log("Server is running on port 5000");
-
+// ==========================================
+// SERVER START
+// ==========================================
 app.listen(PORT, async () => {
-  console.log(`JoyDataBundle is running on  http://localhost:${PORT}`);
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
   await connectToDatabase();
 });
