@@ -65,13 +65,13 @@ app.use(cookieParser());
 // ==========================================
 // ROUTES
 // ==========================================
-const apiPrefix = "/api/v1";
+//const apiPrefix = "/api/v1";
 
-app.use(`${apiPrefix}/auth`, authRouter);
-app.use(`${apiPrefix}/users`, userRouter);
-app.use(`${apiPrefix}/payments`, paymentRouter);
-app.use(`${apiPrefix}/orders`, orderRouter);
-app.use(`${apiPrefix}/bundles`, bundleRouter);
+app.use(`/api/v1/auth`, authRouter);
+app.use(`/api/v1/users`, userRouter);
+app.use(`/api/v1/payments`, paymentRouter);
+app.use(`/api/v1/orders`, orderRouter);
+app.use(`/api/v1/bundles`, bundleRouter);
 
 // Base Routes
 app.get("/", (req, res) => {
