@@ -1,6 +1,5 @@
-import Transaction from '../models/transaction.model.js';
-
-
+import Transaction from "../models/transaction.model.js";
+import mongoose from "mongoose";
 
 /**
  * Calculate analytics data based on filter
@@ -8,83 +7,83 @@ import Transaction from '../models/transaction.model.js';
 const getAnalytics = async (filter) => {
   try {
     // Build filter for successful transactions only (for most calculations)
-    const successFilter = { ...filter, status: 'success' };
+    const successFilter = { ...filter, status: "success" };
 
     // Aggregate analytics in parallel
-    const [revenueData, ordersData, profitData, costData, activeOrdersData] = await Promise.all([
-      // Total Revenue (sum of amounts for successful transactions)
-      Transaction.aggregate([
-        { $match: successFilter },
-        {
-          $group: {
-            _id: null,
-            totalRevenue: { $sum: '$amount' }
-          }
-        }
-      ]),
+    const [revenueData, ordersData, profitData, costData, activeOrdersData] =
+      await Promise.all([
+        // Total Revenue (sum of amounts for successful transactions)
+        Transaction.aggregate([
+          { $match: successFilter },
+          {
+            $group: {
+              _id: null,
+              totalRevenue: { $sum: "$amount" },
+            },
+          },
+        ]),
 
-      // Total Orders (count of successful transactions)
-      Transaction.countDocuments(successFilter),
+        // Total Orders (count of successful transactions)
+        Transaction.countDocuments(successFilter),
 
-      // Profit calculations
-      Transaction.aggregate([
-        { $match: successFilter },
-        {
-          $group: {
-            _id: null,
-            totalJBProfit: { $sum: '$JBProfit' }
-          }
-        }
-      ]),
+        // Profit calculations
+        Transaction.aggregate([
+          { $match: successFilter },
+          {
+            $group: {
+              _id: null,
+              totalJBProfit: { $sum: "$JBProfit" },
+            },
+          },
+        ]),
 
-      // Total Cost (sum of JBCP for successful transactions)
-      Transaction.aggregate([
-        { $match: successFilter },
-        {
-          $group: {
-            _id: null,
-            totalBaseCost: { $sum: '$baseCost' },
-            totalJBProfit: { $sum: '$JBProfit' }
-          }
-        }
-      ]),
+        // Total Cost (sum of JBCP for successful transactions)
+        Transaction.aggregate([
+          { $match: successFilter },
+          {
+            $group: {
+              _id: null,
+              totalBaseCost: { $sum: "$baseCost" },
+              totalJBProfit: { $sum: "$JBProfit" },
+            },
+          },
+        ]),
 
-      // Active Orders (successful transactions with pending delivery)
-      Transaction.countDocuments({
-        ...successFilter,
-        deliveryStatus: 'pending'
-      })
-    ]);
+        // Active Orders (successful transactions with pending delivery)
+        Transaction.countDocuments({
+          ...successFilter,
+          deliveryStatus: "pending",
+        }),
+      ]);
 
-
-  console.log("CostData",costData)
-  console.log("ProfitData", profitData)
-
+    console.log("CostData", costData);
+    console.log("ProfitData", profitData);
 
     // Calculate totals
     const totalRevenue = revenueData[0]?.totalRevenue || 0;
     const totalOrders = ordersData || 0;
     const totalJBProfit = profitData[0]?.totalJBProfit || 0;
-    const developersProfit = totalJBProfit * 0.20; // 20% of JBProfit
+    const developersProfit = totalJBProfit * 0.2; // 20% of JBProfit
     const activeOrders = activeOrdersData || 0;
 
     // Calculate total JBCP (baseCost - JBProfit for all successful transactions)
     const totalBaseCost = costData[0]?.totalBaseCost || 0;
     const totalJBProfitForCost = costData[0]?.totalJBProfit || 0;
     const totalJBCP = totalBaseCost - totalJBProfitForCost;
-    
 
     //TOTAL RESELLERS PROFIT FOR NOW, BUT WILL MOST LIKELY USE  CREATED BY ME CHUKS
-    const totalResellerProfits = totalRevenue - totalBaseCost || 0
-    const totalActualJBCPCost = totalRevenue - totalJBProfit -totalResellerProfits|| 0.
+    const totalResellerProfits = totalRevenue - totalBaseCost || 0;
+    const totalActualJBCPCost =
+      totalRevenue - totalJBProfit - totalResellerProfits || 0;
     const totalCost = totalResellerProfits + totalActualJBCPCost || 0;
-    console.log(totalResellerProfits)
-    console.log(totalActualJBCPCost)
-    console.log(totalCost)
+    console.log(totalResellerProfits);
+    console.log(totalActualJBCPCost);
+    console.log(totalCost);
 
     // Calculate additional metrics
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-    const profitMargin = totalRevenue > 0 ? (totalJBProfit / totalRevenue) * 100 : 0;
+    const profitMargin =
+      totalRevenue > 0 ? (totalJBProfit / totalRevenue) * 100 : 0;
 
     return {
       totalRevenue: parseFloat(totalRevenue.toFixed(2)),
@@ -97,12 +96,11 @@ const getAnalytics = async (filter) => {
       averageOrderValue: parseFloat(averageOrderValue.toFixed(2)),
       profitMargin: parseFloat(profitMargin.toFixed(2)),
       totalResellerProfits: parseFloat(totalResellerProfits.toFixed(2)),
-      totalActualJBCPCost:parseFloat(totalActualJBCPCost.toFixed(2)),
-      currency: 'GHS'
+      totalActualJBCPCost: parseFloat(totalActualJBCPCost.toFixed(2)),
+      currency: "GHS",
     };
-
   } catch (error) {
-    console.error('Error calculating analytics:', error);
+    console.error("Error calculating analytics:", error);
     return {
       totalRevenue: 0,
       totalOrders: 0,
@@ -112,17 +110,14 @@ const getAnalytics = async (filter) => {
       totalCost: 0,
       totalJBCP: 0,
       averageOrderValue: 0,
-      totalResellerProfits:0,
-      totalActualJBCPCost:0,
+      totalResellerProfits: 0,
+      totalActualJBCPCost: 0,
       profitMargin: 0,
-      currency: 'GHS',
-      error: 'Failed to calculate some analytics'
+      currency: "GHS",
+      error: "Failed to calculate some analytics",
     };
   }
 };
-
-
-
 
 /**
  * Get paginated transactions with comprehensive analytics
@@ -139,9 +134,6 @@ const getAnalytics = async (filter) => {
  * - sortOrder: asc or desc (default: desc)
  */
 
-
-
-
 export const getTransactions = async (req, res) => {
   try {
     // Extract and validate query parameters
@@ -156,8 +148,8 @@ export const getTransactions = async (req, res) => {
       endDate,
       search,
       resellerCode,
-      sortBy = 'createdAt',
-      sortOrder = 'desc'
+      sortBy = "createdAt",
+      sortOrder = "desc",
     } = req.query;
 
     // Build filter query
@@ -170,7 +162,7 @@ export const getTransactions = async (req, res) => {
 
     // Network filter
     if (network) {
-      filter['metadata.network'] = network;
+      filter["metadata.network"] = network;
     }
 
     // Reseller filter
@@ -192,42 +184,43 @@ export const getTransactions = async (req, res) => {
     // Search filter (phone number, reference, email)
     if (search) {
       filter.$or = [
-        { 'metadata.phoneNumberReceivingData': { $regex: search, $options: 'i' } },
-        { reference: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
+        {
+          "metadata.phoneNumberReceivingData": {
+            $regex: search,
+            $options: "i",
+          },
+        },
+        { reference: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
       ];
     }
 
     // Build sort object
     const sort = {};
-    sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+    sort[sortBy] = sortOrder === "asc" ? 1 : -1;
 
     // Execute queries in parallel for better performance
     const [transactions, totalCount, analytics] = await Promise.all([
       // Get paginated transactions
-      Transaction.find(filter)
-        .sort(sort)
-        .skip(skip)
-        .limit(limit)
-        .lean(),
+      Transaction.find(filter).sort(sort).skip(skip).limit(limit).lean(),
 
       // Get total count for pagination
       Transaction.countDocuments(filter),
 
       // Get analytics data
-      getAnalytics(filter)
+      getAnalytics(filter),
     ]);
 
     // Calculate JBCP for each transaction
-    const transactionsWithJBCP = transactions.map(transaction => {
+    const transactionsWithJBCP = transactions.map((transaction) => {
       // JBCP (JoyBundle Cost Price) = baseCost - JBProfit
       const JBCP = transaction.baseCost - transaction.JBProfit;
-      
+
       return {
         transactionId: transaction.reference,
         dateTime: transaction.createdAt,
-        customer: transaction.metadata?.phoneNumberReceivingData || 'N/A',
-        network: transaction.metadata?.network?.toUpperCase() || 'N/A',
+        customer: transaction.metadata?.phoneNumberReceivingData || "N/A",
+        network: transaction.metadata?.network?.toUpperCase() || "N/A",
         bundleName: transaction.bundleName,
         JBProfit: transaction.JBProfit,
         status: transaction.status,
@@ -236,9 +229,9 @@ export const getTransactions = async (req, res) => {
         baseCost: transaction.baseCost,
         JBCP: parseFloat(JBCP.toFixed(2)),
         currency: transaction.currency,
-        resellerName: transaction.metadata?.resellerName || 'N/A',
+        resellerName: transaction.metadata?.resellerName || "N/A",
         resellerProfit: transaction.metadata?.resellerProfit || 0,
-        bundleData: transaction.metadata?.bundleData || 'N/A'
+        bundleData: transaction.metadata?.bundleData || "N/A",
       };
     });
 
@@ -259,24 +252,140 @@ export const getTransactions = async (req, res) => {
           totalItems: totalCount,
           itemsPerPage: limit,
           hasNextPage,
-          hasPrevPage
-        }
+          hasPrevPage,
+        },
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     res.status(200).json(response);
-
   } catch (error) {
-    console.error('Error fetching transactions:', error);
+    console.error("Error fetching transactions:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch transactions',
+      message: "Failed to fetch transactions",
       error: error.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
-}
+};
 
+/**
+ * Export pending orders to CSV and mark them as processing
+ */
+export const exportPendingOrders = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
+  try {
+    // 1. Find all successful transactions that are pending delivery
+    const query = {
+      status: "success",
+      deliveryStatus: "pending",
+    };
 
+    const pendingOrders = await Transaction.find(query).session(session);
+
+    if (!pendingOrders.length) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({
+        success: false,
+        message: "No pending orders found to export.",
+      });
+    }
+
+    // 2. Atomic Update: Mark these specific IDs as 'processing'
+    const orderIds = pendingOrders.map((order) => order._id);
+    await Transaction.updateMany(
+      { _id: { $in: orderIds } },
+      { $set: { deliveryStatus: "processing" } },
+      { session },
+    );
+
+    // 3. Generate CSV Data
+    // NEW HEADERS: Removed 'Amount' and 'Network'
+    const csvHeaders = ["Transaction ID", "Phone Number", "Bundle", "Date"];
+
+    const csvRows = pendingOrders.map((order) => {
+      // Logic to extract just the size (e.g., "2GB" from "2GB Data Bundle")
+      let formattedBundle = order.bundleName;
+      // Regex looks for a number followed optionally by a decimal, then GB or MB (case insensitive)
+      const sizeMatch = order.bundleName.match(/(\d+\.?\d*)\s*(GB|MB)/i);
+
+      if (sizeMatch) {
+        // If we find a size like "2 GB" or "500MB", use that and remove spaces
+        formattedBundle = sizeMatch[0].replace(/\s/g, "").toUpperCase();
+      }
+
+      return [
+        order.reference,
+        order.metadata?.phoneNumberReceivingData || "N/A",
+        // Network column removed
+        formattedBundle, // Shows "2GB" instead of full name
+        // Amount column removed
+        new Date(order.createdAt).toISOString(),
+      ].join(",");
+    });
+
+    const csvString = [csvHeaders.join(","), ...csvRows].join("\n");
+
+    // 4. Commit Transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    // 5. Send Response
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=orders-${new Date().toISOString().split("T")[0]}.csv`,
+    );
+    return res.status(200).send(csvString);
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error("Export error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to export orders.",
+    });
+  }
+};
+
+// Update delivery status (Mark as Delivered/Failed)
+export const updateDeliveryStatus = async (req, res) => {
+  try {
+    const { id } = req.params; // This receives the reference (e.g., JBpay_...)
+    const { deliveryStatus, failureReason } = req.body;
+
+    // Find by 'reference', not '_id', because the frontend sends the JBpay ID
+    const transaction = await Transaction.findOneAndUpdate(
+      { reference: id },
+      {
+        deliveryStatus,
+        failureReason: failureReason || null,
+        deliveredAt: deliveryStatus === "delivered" ? new Date() : null,
+      },
+      { new: true }, // Return the updated document
+    );
+
+    if (!transaction) {
+      return res.status(404).json({
+        success: false,
+        message: "Transaction not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: transaction,
+      message: `Order marked as ${deliveryStatus}`,
+    });
+  } catch (error) {
+    console.error("Update delivery status error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update delivery status.",
+    });
+  }
+};
